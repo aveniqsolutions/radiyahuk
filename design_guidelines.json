@@ -1,0 +1,72 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) adapted for High-End Editorial E-commerce",
+  "design_philosophy": "A stark, minimalist, knowledge-focused aesthetic. 'Less AI generated' translates to an editorial, brutalist-leaning but highly refined layout. Using purely black backgrounds, stark white typography, and shades of grey for depth. Focus is entirely on the knowledge/books, using negative space generously.",
+  "colors": {
+    "background": {
+      "default": "#050505",
+      "surface": "#0F0F0F",
+      "surface_hover": "#1A1A1A"
+    },
+    "text": {
+      "primary": "#FAFAFA",
+      "secondary": "#A3A3A3",
+      "muted": "#525252"
+    },
+    "border": {
+      "default": "#262626",
+      "focus": "#525252"
+    },
+    "brand": {
+      "primary": "#FFFFFF",
+      "accent": "#737373"
+    }
+  },
+  "typography": {
+    "heading_font": "Cormorant Garamond",
+    "body_font": "Manrope",
+    "scale": {
+      "h1": "text-5xl md:text-6xl tracking-tight leading-none",
+      "h2": "text-3xl md:text-4xl tracking-tight leading-tight",
+      "h3": "text-2xl md:text-3xl tracking-tight",
+      "body": "text-base md:text-lg leading-relaxed text-[#A3A3A3]",
+      "small": "text-xs uppercase tracking-[0.2em] text-[#737373]"
+    },
+    "rules": [
+      "Headings must use Cormorant Garamond for a scholarly, authoritative, traditional Islamic knowledge feel.",
+      "Body text must use Manrope for high legibility.",
+      "Never center headings by default; prefer strong left-alignment to maintain the editorial grid.",
+      "Use extremely tight tracking on large headings, and very loose tracking on small uppercase labels."
+    ]
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "Use generous padding: p-8, p-16, p-24. Do not cramp content.",
+    "grid_system": "Mode A 'Bento' grid for features/about. Asymmetrical layouts for book series showcases.",
+    "containers": "Avoid standard 'cards'. Use raw border grids (border-r, border-b) with no border-radius (rounded-none).",
+    "nav_bar": "Solid #050505 background with 1px border-b border-[#262626]. Must be sticky z-50."
+  },
+  "components": {
+    "buttons": "Square edges (rounded-none). High contrast: bg-white text-black hover:bg-[#E5E5E5] transition-colors. For secondary buttons, use pure transparent background with 1px solid white border.",
+    "cards": "Do not use standard Shadcn Cards with shadows. Use flat, rectangular `div` elements with `border border-[#262626] bg-[#0F0F0F]`. No border radius.",
+    "inputs": "Shadcn UI but heavily customized: transparent background, 1px border-b only (no full border), rounded-none, white text.",
+    "images": "All images must have a subtle grayscale filter (`grayscale-[50%]`) or be naturally dark to fit the aesthetic. Overlay hero images with `bg-black/40` to ensure text contrast."
+  },
+  "motion": {
+    "hover": "Subtle opacity shifts. Links fade to 50% opacity on hover. Buttons scale slightly or change background instantly.",
+    "page_load": "Fade up elements softly (duration 0.5s). No bouncy spring animations."
+  },
+  "media": {
+    "instructions_to_main_agent": "Use EXACTLY these URLs for the specified categories. Do NOT use placeholder text or services like via.placeholder.com. Ensure images have appropriate `alt` tags and fit within the aesthetic.",
+    "urls": {
+      "logo": "https://customer-assets.emergentagent.com/job_7af49c3a-28fd-4425-8ed0-253ce3a3a946/artifacts/md6e5ni9_WhatsApp%20Image%202026-02-09%20at%2017.45.14.jpeg",
+      "hero_background": "https://images.unsplash.com/photo-1763510385683-6374fac8df54?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwxfHxhcmFiaWMlMjBib29rJTIwZGFya3xlbnwwfHx8fDE3NzUxNTI1MzJ8MA&ixlib=rb-4.1.0&q=85",
+      "about_me_image": "https://images.unsplash.com/photo-1763510386144-2bb37550803f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwyfHxhcmFiaWMlMjBib29rJTIwZGFya3xlbnwwfHx8fDE3NzUxNTI1MzJ8MA&ixlib=rb-4.1.0&q=85",
+      "knowledge_texture_1": "https://images.pexels.com/photos/34256958/pexels-photo-34256958.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "book_cover_placeholder_1": "https://images.pexels.com/photos/7956724/pexels-photo-7956724.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "book_cover_placeholder_2": "https://images.unsplash.com/photo-1600783355836-71c1717faf25?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwzfHxtaW5pbWFsaXN0JTIwYmxhY2slMjBib29rfGVufDB8fHx8MTc3NTE1MjUyMHww&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "testing": {
+    "attributes": "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., `data-testid='purchase-button'`)."
+  }
+}
