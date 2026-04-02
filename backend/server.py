@@ -81,6 +81,7 @@ class SeriesCreate(BaseModel):
     image_url: Optional[str] = ""
     is_featured: bool = False
     order: int = 0
+    bundle_price: Optional[float] = None
 
 class SeriesUpdate(BaseModel):
     title: Optional[str] = None
@@ -88,6 +89,7 @@ class SeriesUpdate(BaseModel):
     image_url: Optional[str] = None
     is_featured: Optional[bool] = None
     order: Optional[int] = None
+    bundle_price: Optional[float] = None
 
 class EbookCreate(BaseModel):
     series_id: str
@@ -109,6 +111,11 @@ class EbookUpdate(BaseModel):
 
 class CheckoutRequest(BaseModel):
     ebook_id: str
+    email: str
+    origin_url: str
+
+class BundleCheckoutRequest(BaseModel):
+    series_id: str
     email: str
     origin_url: str
 
@@ -147,6 +154,10 @@ async def list_series():
     for s in series_list:
         ebook_count = await db.ebooks.count_documents({"series_id": s["id"]})
         s["ebook_count"] = ebook_count
+        ebooks = await db.ebooks.find({"series_id": s["id"]}, {"_id": 0, "price": 1}).to_list(100)
+        total_price = sum(float(eb.get("price", 0)) for eb in ebooks)
+        s["total_price"] = round(total_price, 2)
+        s["savings"] = round(total_price - float(s.get("bundle_price", total_price)), 2) if s.get("bundle_price") else 0
     return series_list
 
 @api_router.get("/series/{series_id}")
@@ -156,6 +167,9 @@ async def get_series(series_id: str):
         raise HTTPException(status_code=404, detail="Series not found")
     ebooks = await db.ebooks.find({"series_id": series_id}, {"_id": 0}).sort("order_in_series", 1).to_list(100)
     s["ebooks"] = ebooks
+    total_price = sum(float(eb.get("price", 0)) for eb in ebooks)
+    s["total_price"] = round(total_price, 2)
+    s["savings"] = round(total_price - float(s.get("bundle_price", total_price)), 2) if s.get("bundle_price") else 0
     return s
 
 @api_router.get("/featured")
@@ -164,6 +178,9 @@ async def get_featured():
     for s in series_list:
         ebooks = await db.ebooks.find({"series_id": s["id"]}, {"_id": 0}).sort("order_in_series", 1).to_list(10)
         s["ebooks"] = ebooks
+        total_price = sum(float(eb.get("price", 0)) for eb in ebooks)
+        s["total_price"] = round(total_price, 2)
+        s["savings"] = round(total_price - float(s.get("bundle_price", total_price)), 2) if s.get("bundle_price") else 0
     return series_list
 
 @api_router.get("/ebooks/{ebook_id}")
@@ -214,6 +231,65 @@ async def create_checkout(req: CheckoutRequest, http_request: Request):
         "session_id": session.session_id,
         "ebook_id": req.ebook_id,
         "ebook_title": ebook["title"],
+        "email": req.email,
+        "amount": amount,
+        "currency": "gbp",
+        "payment_status": "pending",
+        "download_token": download_token,
+        "metadata": metadata,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.payment_transactions.insert_one(tx)
+
+    return {"url": session.url, "session_id": session.session_id}
+
+@api_router.post("/checkout/bundle")
+async def create_bundle_checkout(req: BundleCheckoutRequest, http_request: Request):
+    series = await db.series.find_one({"id": req.series_id}, {"_id": 0})
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    if not series.get("bundle_price"):
+        raise HTTPException(status_code=400, detail="Bundle not available for this series")
+
+    ebooks = await db.ebooks.find({"series_id": req.series_id}, {"_id": 0}).sort("order_in_series", 1).to_list(100)
+    if not ebooks:
+        raise HTTPException(status_code=400, detail="No ebooks in this series")
+
+    api_key = os.environ.get("STRIPE_API_KEY")
+    host_url = req.origin_url.rstrip("/")
+    webhook_url = str(http_request.base_url).rstrip("/") + "/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+
+    success_url = f"{host_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}&bundle={req.series_id}"
+    cancel_url = f"{host_url}/series/{req.series_id}"
+
+    amount = float(series["bundle_price"])
+    ebook_ids = [eb["id"] for eb in ebooks]
+    metadata = {
+        "type": "bundle",
+        "series_id": req.series_id,
+        "series_title": series["title"],
+        "ebook_ids": ",".join(ebook_ids),
+        "customer_email": req.email
+    }
+
+    checkout_req = CheckoutSessionRequest(
+        amount=amount,
+        currency="gbp",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata=metadata
+    )
+    session = await stripe_checkout.create_checkout_session(checkout_req)
+
+    download_token = secrets.token_urlsafe(32)
+    tx = {
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "type": "bundle",
+        "series_id": req.series_id,
+        "ebook_id": ",".join(ebook_ids),
+        "ebook_title": f"{series['title']} (Complete Bundle)",
         "email": req.email,
         "amount": amount,
         "currency": "gbp",
@@ -299,19 +375,34 @@ async def download_ebook(token: str):
         order = await db.orders.find_one({"download_token": token, "payment_status": "paid"}, {"_id": 0})
         if not order:
             raise HTTPException(status_code=404, detail="Invalid or expired download link")
-        ebook_id = order["ebook_id"]
+        tx = order
+
+    is_bundle = tx.get("type") == "bundle"
+
+    if is_bundle:
+        ebook_ids = tx["ebook_id"].split(",")
+        ebooks = []
+        for eid in ebook_ids:
+            eb = await db.ebooks.find_one({"id": eid}, {"_id": 0})
+            if eb:
+                ebooks.append({"title": eb["title"], "download_url": eb.get("download_url", "")})
+        return {
+            "title": tx.get("ebook_title", "Bundle"),
+            "is_bundle": True,
+            "ebooks": ebooks,
+            "download_url": "",
+            "message": "Your complete series bundle is ready for download."
+        }
     else:
-        ebook_id = tx["ebook_id"]
-
-    ebook = await db.ebooks.find_one({"id": ebook_id}, {"_id": 0})
-    if not ebook:
-        raise HTTPException(status_code=404, detail="Ebook not found")
-
-    return {
-        "title": ebook["title"],
-        "download_url": ebook.get("download_url", ""),
-        "message": "Your ebook is ready for download."
-    }
+        ebook = await db.ebooks.find_one({"id": tx["ebook_id"]}, {"_id": 0})
+        if not ebook:
+            raise HTTPException(status_code=404, detail="Ebook not found")
+        return {
+            "title": ebook["title"],
+            "is_bundle": False,
+            "download_url": ebook.get("download_url", ""),
+            "message": "Your ebook is ready for download."
+        }
 
 # ─── Contact ───
 
@@ -470,6 +561,7 @@ async def seed_sample_data():
             "image_url": "https://images.pexels.com/photos/7956724/pexels-photo-7956724.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
             "is_featured": True,
             "order": 1,
+            "bundle_price": 19.99,
             "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
@@ -479,6 +571,7 @@ async def seed_sample_data():
             "image_url": "https://images.unsplash.com/photo-1600783355836-71c1717faf25?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwzfHxtaW5pbWFsaXN0JTIwYmxhY2slMjBib29rfGVufDB8fHx8MTc3NTE1MjUyMHww&ixlib=rb-4.1.0&q=85",
             "is_featured": True,
             "order": 2,
+            "bundle_price": 18.99,
             "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
@@ -488,6 +581,7 @@ async def seed_sample_data():
             "image_url": "https://images.pexels.com/photos/34256958/pexels-photo-34256958.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
             "is_featured": True,
             "order": 3,
+            "bundle_price": 19.99,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
     ]

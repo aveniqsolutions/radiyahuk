@@ -64,7 +64,7 @@ function Sidebar() {
 function SeriesManager() {
   const [series, setSeries] = useState([]);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ title: "", description: "", image_url: "", is_featured: false, order: 0 });
+  const [form, setForm] = useState({ title: "", description: "", image_url: "", is_featured: false, order: 0, bundle_price: "" });
 
   const load = useCallback(async () => {
     try {
@@ -77,15 +77,21 @@ function SeriesManager() {
 
   const handleSave = async () => {
     try {
+      const payload = { ...form };
+      if (payload.bundle_price === "" || payload.bundle_price === null) {
+        delete payload.bundle_price;
+      } else {
+        payload.bundle_price = parseFloat(payload.bundle_price) || null;
+      }
       if (editing) {
-        await api.put(`/admin/series/${editing}`, form);
+        await api.put(`/admin/series/${editing}`, payload);
         toast.success("Series updated.");
       } else {
-        await api.post("/admin/series", form);
+        await api.post("/admin/series", payload);
         toast.success("Series created.");
       }
       setEditing(null);
-      setForm({ title: "", description: "", image_url: "", is_featured: false, order: 0 });
+      setForm({ title: "", description: "", image_url: "", is_featured: false, order: 0, bundle_price: "" });
       load();
     } catch { toast.error("Failed to save series."); }
   };
@@ -101,7 +107,7 @@ function SeriesManager() {
 
   const startEdit = (s) => {
     setEditing(s.id);
-    setForm({ title: s.title, description: s.description, image_url: s.image_url || "", is_featured: s.is_featured, order: s.order });
+    setForm({ title: s.title, description: s.description, image_url: s.image_url || "", is_featured: s.is_featured, order: s.order, bundle_price: s.bundle_price || "" });
   };
 
   return (
@@ -110,7 +116,7 @@ function SeriesManager() {
         <h2 className="font-['Cormorant_Garamond'] text-2xl text-[#FAFAFA]">Series</h2>
         <button
           data-testid="add-series-btn"
-          onClick={() => { setEditing(null); setForm({ title: "", description: "", image_url: "", is_featured: false, order: 0 }); }}
+          onClick={() => { setEditing(null); setForm({ title: "", description: "", image_url: "", is_featured: false, order: 0, bundle_price: "" }); }}
           className="flex items-center gap-2 bg-white text-black px-4 py-2 text-xs uppercase tracking-[0.15em] hover:bg-[#E5E5E5] transition-colors"
         >
           <Plus size={14} /> New Series
@@ -161,6 +167,15 @@ function SeriesManager() {
             placeholder="Order"
             className="w-20 bg-transparent border-b border-[#525252] text-[#FAFAFA] py-2 text-sm focus:outline-none focus:border-white"
           />
+          <input
+            type="number"
+            step="0.01"
+            data-testid="series-bundle-price-input"
+            value={form.bundle_price}
+            onChange={e => setForm({...form, bundle_price: e.target.value})}
+            placeholder="Bundle price"
+            className="w-32 bg-transparent border-b border-[#525252] text-[#FAFAFA] py-2 text-sm focus:outline-none focus:border-white placeholder:text-[#525252]"
+          />
         </div>
         <div className="flex gap-3">
           <button
@@ -172,7 +187,7 @@ function SeriesManager() {
           </button>
           {editing && (
             <button
-              onClick={() => { setEditing(null); setForm({ title: "", description: "", image_url: "", is_featured: false, order: 0 }); }}
+              onClick={() => { setEditing(null); setForm({ title: "", description: "", image_url: "", is_featured: false, order: 0, bundle_price: "" }); }}
               className="border border-[#262626] text-[#A3A3A3] px-6 py-2 text-xs uppercase tracking-[0.15em] hover:text-[#FAFAFA] transition-colors"
             >
               Cancel
@@ -187,7 +202,10 @@ function SeriesManager() {
           <div key={s.id} className="border border-[#262626] bg-[#0F0F0F] p-4 flex items-center justify-between">
             <div>
               <p className="text-[#FAFAFA] text-sm font-medium">{s.title}</p>
-              <p className="text-xs text-[#737373]">{s.ebook_count || 0} ebooks &middot; Order: {s.order} {s.is_featured && " &middot; Featured"}</p>
+              <p className="text-xs text-[#737373]">
+                {s.ebook_count || 0} ebooks &middot; Order: {s.order} {s.is_featured && " &middot; Featured"}
+                {s.bundle_price && ` &middot; Bundle: \u00A3${Number(s.bundle_price).toFixed(2)}`}
+              </p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => startEdit(s)} className="p-2 text-[#737373] hover:text-[#FAFAFA] transition-colors" data-testid={`edit-series-${s.id}`}>

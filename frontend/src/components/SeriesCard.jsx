@@ -1,7 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Tag } from "lucide-react";
 
 export default function SeriesCard({ series, index = 0 }) {
+  const hasBundlePrice = series.bundle_price && series.bundle_price > 0;
+
   return (
     <Link
       to={`/series/${series.id}`}
@@ -24,9 +27,22 @@ export default function SeriesCard({ series, index = 0 }) {
         <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#FAFAFA] mb-3 group-hover:text-white transition-colors">
           {series.title}
         </h3>
-        <p className="text-sm text-[#A3A3A3] leading-relaxed line-clamp-3">
+        <p className="text-sm text-[#A3A3A3] leading-relaxed line-clamp-3 mb-4">
           {series.description}
         </p>
+        {hasBundlePrice && (
+          <div className="flex items-center gap-2 pt-3 border-t border-[#1A1A1A]">
+            <Tag size={12} className="text-[#A3A3A3]" />
+            <span className="text-xs uppercase tracking-[0.15em] text-[#A3A3A3]">
+              Bundle: &pound;{Number(series.bundle_price).toFixed(2)}
+            </span>
+            {series.savings > 0 && (
+              <span className="text-xs text-[#525252]">
+                (Save &pound;{Number(series.savings).toFixed(2)})
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );
