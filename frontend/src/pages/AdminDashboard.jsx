@@ -69,7 +69,7 @@ function SeriesManager() {
   const load = useCallback(async () => {
     try {
       const res = await api.get("/admin/series");
-      setSeries(res.data);
+      setSeries(Array.isArray(res.data) ? res.data : []);
     } catch { toast.error("Failed to load series"); }
   }, []);
 
