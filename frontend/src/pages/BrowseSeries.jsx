@@ -10,7 +10,7 @@ export default function BrowseSeries() {
 
   useEffect(() => {
     axios.get(`${API}/series`).then(r => {
-      setSeries(r.data);
+      setSeries(Array.isArray(r.data) ? r.data : []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
