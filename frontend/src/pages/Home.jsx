@@ -12,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     axios.get(`${API}/featured`).then(r => {
-      setFeatured(r.data);
+      setFeatured(Array.isArray(r.data) ? r.data : []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
