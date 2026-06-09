@@ -232,8 +232,8 @@ function EbookManager() {
   const load = useCallback(async () => {
     try {
       const [ebookRes, seriesRes] = await Promise.all([api.get("/admin/ebooks"), api.get("/admin/series")]);
-      setEbooks(ebookRes.data);
-      setSeries(seriesRes.data);
+      etEbooks(Array.isArray(ebookRes.data) ? ebookRes.data : []);
+      setSeries(Array.isArray(seriesRes.data) ? seriesRes.data : []);
     } catch { toast.error("Failed to load data"); }
   }, []);
 
