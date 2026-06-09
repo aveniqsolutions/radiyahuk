@@ -426,7 +426,7 @@ function MessagesView() {
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
-    api.get(\"/admin/contacts").then(r => setMessages(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get("/admin/contacts").then(r => setMessages(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, []);
 
   return (
